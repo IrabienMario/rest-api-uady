@@ -2,13 +2,9 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# ── Datos en memoria ──────────────────────────────────────────
 alumnos = []
 profesores = []
-alumno_id_counter = 1
-profesor_id_counter = 1
 
-# ── Helpers de validación ─────────────────────────────────────
 def validar_alumno(data):
     errores = []
     for campo in ["nombres", "apellidos", "matricula"]:
@@ -18,6 +14,10 @@ def validar_alumno(data):
         errores.append("'promedio' es obligatorio.")
     elif not isinstance(data["promedio"], (int, float)):
         errores.append("'promedio' debe ser un número.")
+    if "id" not in data:
+        errores.append("'id' es obligatorio.")
+    elif not isinstance(data["id"], int):
+        errores.append("'id' debe ser un entero.")
     return errores
 
 def validar_profesor(data):
@@ -31,9 +31,13 @@ def validar_profesor(data):
         errores.append("'horasClase' es obligatorio.")
     elif not isinstance(data["horasClase"], int) or data["horasClase"] < 0:
         errores.append("'horasClase' debe ser un entero positivo.")
+    if "id" not in data:
+        errores.append("'id' es obligatorio.")
+    elif not isinstance(data["id"], int):
+        errores.append("'id' debe ser un entero.")
     return errores
 
-# ── Endpoints Alumnos ─────────────────────────────────────────
+# ── Alumnos ───────────────────────────────────────────────────
 @app.route("/alumnos", methods=["GET"])
 def get_alumnos():
     return jsonify(alumnos), 200
@@ -47,21 +51,21 @@ def get_alumno(id):
 
 @app.route("/alumnos", methods=["POST"])
 def create_alumno():
-    global alumno_id_counter
     data = request.get_json()
     if not data:
         return jsonify({"error": "Body JSON requerido"}), 400
     errores = validar_alumno(data)
     if errores:
         return jsonify({"errores": errores}), 400
+    if any(a["id"] == data["id"] for a in alumnos):
+        return jsonify({"error": "ID ya existe"}), 400
     alumno = {
-        "id": alumno_id_counter,
+        "id": data["id"],
         "nombres": data["nombres"].strip(),
         "apellidos": data["apellidos"].strip(),
         "matricula": data["matricula"].strip(),
         "promedio": data["promedio"]
     }
-    alumno_id_counter += 1
     alumnos.append(alumno)
     return jsonify(alumno), 201
 
@@ -73,9 +77,11 @@ def update_alumno(id):
     data = request.get_json()
     if not data:
         return jsonify({"error": "Body JSON requerido"}), 400
-    errores = validar_alumno(data)
-    if errores:
-        return jsonify({"errores": errores}), 400
+    for campo in ["nombres", "apellidos", "matricula"]:
+        if campo not in data or not isinstance(data[campo], str) or not data[campo].strip():
+            return jsonify({"error": f"'{campo}' es obligatorio y debe ser texto no vacío."}), 400
+    if "promedio" not in data or not isinstance(data["promedio"], (int, float)):
+        return jsonify({"error": "'promedio' debe ser un número."}), 400
     alumno.update({
         "nombres": data["nombres"].strip(),
         "apellidos": data["apellidos"].strip(),
@@ -93,7 +99,7 @@ def delete_alumno(id):
     alumnos = [a for a in alumnos if a["id"] != id]
     return jsonify({"mensaje": "Alumno eliminado"}), 200
 
-# ── Endpoints Profesores ──────────────────────────────────────
+# ── Profesores ────────────────────────────────────────────────
 @app.route("/profesores", methods=["GET"])
 def get_profesores():
     return jsonify(profesores), 200
@@ -107,21 +113,21 @@ def get_profesor(id):
 
 @app.route("/profesores", methods=["POST"])
 def create_profesor():
-    global profesor_id_counter
     data = request.get_json()
     if not data:
         return jsonify({"error": "Body JSON requerido"}), 400
     errores = validar_profesor(data)
     if errores:
         return jsonify({"errores": errores}), 400
+    if any(p["id"] == data["id"] for p in profesores):
+        return jsonify({"error": "ID ya existe"}), 400
     profesor = {
-        "id": profesor_id_counter,
+        "id": data["id"],
         "numeroEmpleado": str(data["numeroEmpleado"]).strip(),
         "nombres": data["nombres"].strip(),
         "apellidos": data["apellidos"].strip(),
         "horasClase": data["horasClase"]
     }
-    profesor_id_counter += 1
     profesores.append(profesor)
     return jsonify(profesor), 201
 
@@ -133,9 +139,13 @@ def update_profesor(id):
     data = request.get_json()
     if not data:
         return jsonify({"error": "Body JSON requerido"}), 400
-    errores = validar_profesor(data)
-    if errores:
-        return jsonify({"errores": errores}), 400
+    for campo in ["nombres", "apellidos"]:
+        if campo not in data or not isinstance(data[campo], str) or not data[campo].strip():
+            return jsonify({"error": f"'{campo}' es obligatorio."}), 400
+    if "numeroEmpleado" not in data or not str(data["numeroEmpleado"]).strip():
+        return jsonify({"error": "'numeroEmpleado' es obligatorio."}), 400
+    if "horasClase" not in data or not isinstance(data["horasClase"], int) or data["horasClase"] < 0:
+        return jsonify({"error": "'horasClase' debe ser un entero positivo."}), 400
     profesor.update({
         "numeroEmpleado": str(data["numeroEmpleado"]).strip(),
         "nombres": data["nombres"].strip(),
@@ -153,6 +163,5 @@ def delete_profesor(id):
     profesores = [p for p in profesores if p["id"] != id]
     return jsonify({"mensaje": "Profesor eliminado"}), 200
 
-# ── Arranque ──────────────────────────────────────────────────
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=80, debug=False)
