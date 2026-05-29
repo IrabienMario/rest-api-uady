@@ -205,7 +205,7 @@ def delete_alumno(id):
 
 @app.route("/alumnos/<int:id>/fotoPerfil", methods=["POST"])
 def upload_foto(id):
-    alumno = Alumno.query.get(id)
+    alumno = db.session.get(Alumno, id)
     if not alumno:
         return jsonify({"error": "Alumno no encontrado"}), 404
 
@@ -213,16 +213,23 @@ def upload_foto(id):
         return jsonify({"error": "Campo 'foto' requerido (multipart/form-data)"}), 400
 
     foto = request.files["foto"]
-    ext  = foto.filename.rsplit(".", 1)[-1] if "." in foto.filename else "jpg"
-    key  = f"alumnos/{id}/fotoPerfil-{uuid.uuid4()}.{ext}"
+    ext  = foto.filename.rsplit(".", 1)[-1].lower() if "." in foto.filename else "jpg"
+    content_type_map = {
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "gif": "image/gif",
+        "webp": "image/webp",
+    }
+    content_type = content_type_map.get(ext, foto.content_type or "image/jpeg")
+    key = f"alumnos/{id}/fotoPerfil-{uuid.uuid4()}.{ext}"
 
     s3 = get_s3()
     s3.put_object(
         Bucket      = S3_BUCKET,
         Key         = key,
         Body        = foto.read(),
-        ContentType = foto.content_type,
-        ACL         = "public-read",
+        ContentType = content_type,
     )
 
     url = f"https://{S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{key}"
