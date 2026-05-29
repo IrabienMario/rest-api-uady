@@ -161,7 +161,7 @@ def create_alumno():
     )
     db.session.add(alumno)
     db.session.commit()
-    return jsonify(alumno.to_dict()), 200
+    return jsonify(alumno.to_dict()), 201
 
 
 @app.route("/alumnos/<int:id>", methods=["PUT"])
@@ -393,7 +393,7 @@ def create_profesor():
     )
     db.session.add(profesor)
     db.session.commit()
-    return jsonify(profesor.to_dict()), 200
+    return jsonify(profesor.to_dict()), 201
 
 
 @app.route("/profesores/<int:id>", methods=["PUT"])
